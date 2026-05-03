@@ -7,13 +7,14 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Nunito:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
   --deep: #020c18;
   --ocean1: #041528;
   --ocean2: #072040;
-  --ocean3: #0a2d58;
   --wave: #0e6b8a;
   --foam: #a8d8ea;
   --seafoam: #56c1c1;
@@ -24,315 +25,95 @@
   --border: rgba(168,216,234,0.15);
   --glow: rgba(86,193,193,0.2);
 }
-
 * { margin:0; padding:0; box-sizing:border-box; }
-
-body {
-  background: var(--deep);
-  color: var(--pearl);
-  font-family: 'Nunito', sans-serif;
-  min-height: 100vh;
-  overflow-x: hidden;
-}
-
-/* Animated wave background */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background:
-    radial-gradient(ellipse at 20% 50%, rgba(6,40,80,0.8) 0%, transparent 60%),
-    radial-gradient(ellipse at 80% 20%, rgba(10,60,100,0.6) 0%, transparent 50%),
-    radial-gradient(ellipse at 60% 80%, rgba(14,107,138,0.3) 0%, transparent 50%);
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* Floating particles */
-.particles {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  overflow: hidden;
-}
-
-.particle {
-  position: absolute;
-  width: 3px;
-  height: 3px;
-  background: rgba(168,216,234,0.4);
-  border-radius: 50%;
-  animation: float linear infinite;
-}
-
-@keyframes float {
-  0% { transform: translateY(100vh) translateX(0); opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 0.5; }
-  100% { transform: translateY(-100px) translateX(30px); opacity: 0; }
-}
-
-/* ── HEADER ── */
-.header {
-  position: sticky; top: 0; z-index: 200;
-  background: rgba(2,12,24,0.92);
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--border);
-  padding: 1rem 1.5rem;
-  display: flex; align-items: center; justify-content: space-between;
-}
-
-.logo-wrap { display: flex; align-items: center; gap: 12px; }
-
-.logo-icon {
-  width: 40px; height: 40px;
-  background: linear-gradient(135deg, var(--wave), var(--seafoam));
-  border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.2rem;
-  box-shadow: 0 4px 15px rgba(86,193,193,0.3);
-}
-
-.project-name {
-  font-family: 'Cinzel', serif;
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--foam);
-  letter-spacing: 3px;
-  text-transform: uppercase;
-}
-
-.project-sub {
-  font-size: 0.65rem;
-  color: var(--mist);
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  font-weight: 300;
-}
-
-.header-right { display: flex; align-items: center; gap: 0.75rem; }
-
-.status-pill {
-  display: flex; align-items: center; gap: 6px;
-  background: rgba(0,255,157,0.08);
-  border: 1px solid rgba(0,255,157,0.2);
-  border-radius: 20px;
-  padding: 5px 14px;
-  font-size: 0.7rem;
-  color: #00ff9d;
-  font-weight: 600;
-  letter-spacing: 1px;
-}
-
-.status-pill.offline { background: rgba(232,131,106,0.1); border-color: rgba(232,131,106,0.25); color: var(--coral); }
-
-.status-dot { width:7px; height:7px; border-radius:50%; background:#00ff9d; animation: pulse 2s infinite; }
-.status-dot.off { background: var(--coral); animation:none; }
-
-@keyframes pulse {
-  0%,100%{ box-shadow: 0 0 0 0 rgba(0,255,157,0.4); }
-  50%{ box-shadow: 0 0 0 5px rgba(0,255,157,0); }
-}
-
-.btn-wave {
-  background: rgba(168,216,234,0.08);
-  border: 1px solid rgba(168,216,234,0.2);
-  color: var(--foam);
-  padding: 7px 16px;
-  border-radius: 20px;
-  cursor: pointer;
-  font-family: 'Nunito', sans-serif;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 1px;
-  transition: all 0.2s;
-}
-
-.btn-wave:hover { background: rgba(168,216,234,0.15); box-shadow: 0 0 15px rgba(168,216,234,0.2); }
-
-.btn-demo {
-  background: rgba(86,193,193,0.1);
-  border-color: rgba(86,193,193,0.25);
-  color: var(--seafoam);
-}
-
-.btn-demo:hover { background: rgba(86,193,193,0.2); }
-
-/* ── MAIN ── */
-.main { position: relative; z-index: 1; padding: 1.5rem; max-width: 1300px; margin: 0 auto; }
-
-/* ── SENSOR CARDS ── */
-.cards { display: grid; grid-template-columns: repeat(4,1fr); gap: 1rem; margin-bottom: 1.5rem; }
-@media(max-width:900px){ .cards{ grid-template-columns:repeat(2,1fr); } }
-@media(max-width:480px){ .cards{ grid-template-columns:1fr 1fr; } }
-
-.card {
-  background: linear-gradient(135deg, var(--ocean2), var(--ocean1));
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 1.25rem;
-  position: relative;
-  overflow: hidden;
-  transition: transform 0.3s, box-shadow 0.3s;
-}
-
-.card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.4), 0 0 20px var(--glow);
-}
-
-.card::before {
-  content: '';
-  position: absolute;
-  top: -30px; right: -30px;
-  width: 80px; height: 80px;
-  border-radius: 50%;
-  opacity: 0.08;
-}
-
-.card.c-depth::before { background: var(--seafoam); }
-.card.c-temp::before  { background: var(--coral); }
-.card.c-tds::before   { background: var(--sand); }
-.card.c-gps::before   { background: var(--foam); }
-
+body { background:var(--deep); color:var(--pearl); font-family:'Nunito',sans-serif; min-height:100vh; overflow-x:hidden; }
+body::before { content:''; position:fixed; inset:0; background: radial-gradient(ellipse at 20% 50%,rgba(6,40,80,0.8) 0%,transparent 60%), radial-gradient(ellipse at 80% 20%,rgba(10,60,100,0.6) 0%,transparent 50%); pointer-events:none; z-index:0; }
+.particles { position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden; }
+.particle { position:absolute; width:3px; height:3px; background:rgba(168,216,234,0.4); border-radius:50%; animation:float linear infinite; }
+@keyframes float { 0%{transform:translateY(100vh);opacity:0;} 10%{opacity:1;} 90%{opacity:0.5;} 100%{transform:translateY(-100px);opacity:0;} }
+.header { position:sticky; top:0; z-index:200; background:rgba(2,12,24,0.92); backdrop-filter:blur(20px); border-bottom:1px solid var(--border); padding:0.875rem 1.5rem; display:flex; align-items:center; justify-content:space-between; }
+.logo-wrap { display:flex; align-items:center; gap:12px; }
+.logo-icon { width:38px; height:38px; background:linear-gradient(135deg,var(--wave),var(--seafoam)); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1.1rem; box-shadow:0 4px 15px rgba(86,193,193,0.3); }
+.project-name { font-family:'Cinzel',serif; font-size:1.1rem; font-weight:700; color:var(--foam); letter-spacing:3px; text-transform:uppercase; }
+.project-sub { font-size:0.6rem; color:var(--mist); letter-spacing:2px; text-transform:uppercase; }
+.header-right { display:flex; align-items:center; gap:0.75rem; }
+.status-pill { display:flex; align-items:center; gap:6px; background:rgba(0,255,157,0.08); border:1px solid rgba(0,255,157,0.2); border-radius:20px; padding:5px 14px; font-size:0.7rem; color:#00ff9d; font-weight:600; }
+.status-pill.offline { background:rgba(232,131,106,0.1); border-color:rgba(232,131,106,0.25); color:var(--coral); }
+.status-dot { width:7px; height:7px; border-radius:50%; background:#00ff9d; animation:pulse 2s infinite; }
+.status-dot.off { background:var(--coral); animation:none; }
+@keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(0,255,157,0.4);} 50%{box-shadow:0 0 0 5px rgba(0,255,157,0);} }
+.btn-wave { background:rgba(168,216,234,0.08); border:1px solid rgba(168,216,234,0.2); color:var(--foam); padding:7px 16px; border-radius:20px; cursor:pointer; font-family:'Nunito',sans-serif; font-size:0.75rem; font-weight:600; transition:all 0.2s; }
+.btn-wave:hover { background:rgba(168,216,234,0.15); }
+.btn-demo { background:rgba(86,193,193,0.1); border-color:rgba(86,193,193,0.25); color:var(--seafoam); }
+.main { position:relative; z-index:1; padding:1.25rem; max-width:1400px; margin:0 auto; }
+.cards { display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin-bottom:1.25rem; }
+@media(max-width:900px){.cards{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:480px){.cards{grid-template-columns:1fr 1fr;}}
+.card { background:linear-gradient(135deg,var(--ocean2),var(--ocean1)); border:1px solid var(--border); border-radius:16px; padding:1.25rem; position:relative; overflow:hidden; transition:transform 0.3s,box-shadow 0.3s; }
+.card:hover { transform:translateY(-4px); box-shadow:0 12px 40px rgba(0,0,0,0.4),0 0 20px var(--glow); }
+.card::after { content:''; position:absolute; bottom:0; left:0; right:0; height:2px; border-radius:0 0 16px 16px; }
+.card.c-depth::after{background:linear-gradient(90deg,var(--seafoam),transparent);}
+.card.c-temp::after{background:linear-gradient(90deg,var(--coral),transparent);}
+.card.c-tds::after{background:linear-gradient(90deg,var(--sand),transparent);}
+.card.c-gps::after{background:linear-gradient(90deg,#b388ff,transparent);}
 .card-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem; }
-.card-label { font-size:0.7rem; letter-spacing:2px; text-transform:uppercase; color:var(--mist); font-weight:600; }
-.card-icon { font-size:1.3rem; }
-
-.card-value { font-family:'Cinzel',serif; font-size:2rem; font-weight:700; line-height:1; margin-bottom:0.3rem; }
-.card.c-depth .card-value { color: var(--seafoam); }
-.card.c-temp  .card-value { color: var(--coral); }
-.card.c-tds   .card-value { color: var(--sand); }
-.card.c-gps   .card-value { color: var(--foam); font-size:0.9rem; font-family:'Nunito',sans-serif; margin-top:4px; }
-
-.card-unit { font-size:0.75rem; font-weight:400; opacity:0.6; margin-left:3px; font-family:'Nunito',sans-serif; }
-.card-sub { font-size:0.65rem; color:var(--mist); margin-top:4px; font-weight:300; }
-
-.quality-badge {
-  display: inline-block;
-  font-size: 0.6rem;
-  padding: 3px 10px;
-  border-radius: 10px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  margin-top: 6px;
-}
-.q-good { background: rgba(86,193,193,0.15); color: var(--seafoam); border: 1px solid rgba(86,193,193,0.3); }
-.q-warn { background: rgba(240,201,135,0.15); color: var(--sand); border: 1px solid rgba(240,201,135,0.3); }
-.q-bad  { background: rgba(232,131,106,0.15); color: var(--coral); border: 1px solid rgba(232,131,106,0.3); }
-
-/* ── GRID ── */
+.card-label { font-size:0.65rem; letter-spacing:2px; text-transform:uppercase; color:var(--mist); font-weight:600; }
+.card-icon { font-size:1.2rem; }
+.card-value { font-family:'Cinzel',serif; font-size:1.9rem; font-weight:700; line-height:1; }
+.card.c-depth .card-value{color:var(--seafoam);}
+.card.c-temp .card-value{color:var(--coral);}
+.card.c-tds .card-value{color:var(--sand);}
+.card.c-gps .card-value{color:#b388ff;font-size:0.9rem;font-family:'Nunito',sans-serif;margin-top:4px;}
+.card-unit { font-size:0.7rem; font-weight:400; opacity:0.7; margin-left:3px; font-family:'Nunito',sans-serif; }
+.card-sub { font-size:0.65rem; color:var(--mist); margin-top:6px; font-weight:300; }
+.quality-badge { display:inline-block; font-size:0.6rem; padding:3px 10px; border-radius:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; margin-top:6px; }
+.q-good{background:rgba(86,193,193,0.15);color:var(--seafoam);border:1px solid rgba(86,193,193,0.3);}
+.q-warn{background:rgba(240,201,135,0.15);color:var(--sand);border:1px solid rgba(240,201,135,0.3);}
+.q-bad{background:rgba(232,131,106,0.15);color:var(--coral);border:1px solid rgba(232,131,106,0.3);}
 .grid-main { display:grid; grid-template-columns:1.1fr 0.9fr; gap:1.25rem; margin-bottom:1.25rem; }
-@media(max-width:800px){ .grid-main{ grid-template-columns:1fr; } }
-
-/* ── PANELS ── */
-.panel {
-  background: linear-gradient(180deg, var(--ocean2), var(--ocean1));
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  overflow: hidden;
-}
-
-.panel-header {
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: space-between;
-  background: rgba(14,107,138,0.1);
-}
-
-.panel-title {
-  font-family: 'Cinzel', serif;
-  font-size: 0.8rem;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: var(--foam);
-  font-weight: 600;
-}
-
-.panel-badge {
-  font-size: 0.65rem;
-  padding: 3px 10px;
-  border-radius: 10px;
-  font-weight: 600;
-  letter-spacing: 1px;
-}
-
-.badge-teal { background: rgba(86,193,193,0.12); color: var(--seafoam); border: 1px solid rgba(86,193,193,0.25); }
-.badge-foam { background: rgba(168,216,234,0.1); color: var(--foam); border: 1px solid rgba(168,216,234,0.2); }
-
-/* ── MAP ── */
-#map { height: 320px; }
-.map-footer { padding: 0.6rem 1.25rem; display:flex; justify-content:space-between; font-size:0.65rem; color:var(--mist); background: rgba(14,107,138,0.08); border-top: 1px solid var(--border); font-weight:500; }
-
-/* ── CHART ── */
-.chart-wrap { padding: 1.25rem; height: 320px; position: relative; }
-
-/* ── TABLE ── */
-.table-wrap { overflow-x: auto; }
-
+@media(max-width:800px){.grid-main{grid-template-columns:1fr;}}
+.panel { background:linear-gradient(180deg,var(--ocean2),var(--ocean1)); border:1px solid var(--border); border-radius:16px; overflow:hidden; }
+.panel-header { padding:0.875rem 1.25rem; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background:rgba(14,107,138,0.1); }
+.panel-title { font-family:'Cinzel',serif; font-size:0.75rem; letter-spacing:2px; text-transform:uppercase; color:var(--foam); font-weight:600; }
+.panel-badge { font-size:0.6rem; padding:3px 10px; border-radius:10px; font-weight:600; letter-spacing:1px; }
+.badge-teal{background:rgba(86,193,193,0.12);color:var(--seafoam);border:1px solid rgba(86,193,193,0.25);}
+.badge-foam{background:rgba(168,216,234,0.1);color:var(--foam);border:1px solid rgba(168,216,234,0.2);}
+#map { height:320px; }
+.map-footer { padding:0.6rem 1.25rem; display:flex; justify-content:space-between; font-size:0.65rem; color:var(--mist); background:rgba(14,107,138,0.08); border-top:1px solid var(--border); }
+.graphs-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; margin-bottom:1.25rem; }
+@media(max-width:900px){.graphs-grid{grid-template-columns:1fr;}}
+.graph-panel { background:linear-gradient(180deg,var(--ocean2),var(--ocean1)); border:1px solid var(--border); border-radius:16px; overflow:hidden; }
+.graph-header { padding:0.75rem 1rem; border-bottom:1px solid var(--border); background:rgba(14,107,138,0.1); display:flex; align-items:center; justify-content:space-between; }
+.graph-title { font-family:'Cinzel',serif; font-size:0.7rem; letter-spacing:2px; text-transform:uppercase; font-weight:600; }
+.graph-title.depth-title{color:var(--seafoam);}
+.graph-title.temp-title{color:var(--coral);}
+.graph-title.tds-title{color:var(--sand);}
+.graph-unit { font-size:0.6rem; padding:2px 8px; border-radius:8px; font-weight:600; }
+.unit-depth{background:rgba(86,193,193,0.1);color:var(--seafoam);border:1px solid rgba(86,193,193,0.2);}
+.unit-temp{background:rgba(232,131,106,0.1);color:var(--coral);border:1px solid rgba(232,131,106,0.2);}
+.unit-tds{background:rgba(240,201,135,0.1);color:var(--sand);border:1px solid rgba(240,201,135,0.2);}
+.graph-wrap { padding:1rem; height:200px; position:relative; }
+.table-wrap { overflow-x:auto; }
 table { width:100%; border-collapse:collapse; }
-
-thead tr { background: rgba(14,107,138,0.15); }
-
-th {
-  padding: 0.875rem 1.25rem;
-  text-align: left;
-  font-size: 0.65rem;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: var(--mist);
-  font-family: 'Cinzel', serif;
-  font-weight: 600;
-  border-bottom: 1px solid var(--border);
-}
-
-td {
-  padding: 0.8rem 1.25rem;
-  border-bottom: 1px solid rgba(168,216,234,0.05);
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-tr:hover td { background: rgba(14,107,138,0.1); }
-tr:last-child td { border-bottom: none; }
-
-.td-time  { color: var(--mist); font-size:0.75rem; }
-.td-depth { color: var(--seafoam); font-family:'Cinzel',serif; }
-.td-temp  { color: var(--coral); font-family:'Cinzel',serif; }
-.td-tds   { color: var(--sand); font-family:'Cinzel',serif; }
-.td-gps   { color: var(--foam); font-size:0.75rem; }
-
-.no-data { text-align:center; padding:3rem; color:var(--mist); font-size:0.8rem; letter-spacing:2px; font-weight:300; }
-
-/* ── FOOTER ── */
-.footer {
-  text-align: center;
-  padding: 1.5rem;
-  font-size: 0.65rem;
-  color: var(--mist);
-  letter-spacing: 2px;
-  border-top: 1px solid var(--border);
-  margin-top: 1.5rem;
-  font-family: 'Cinzel', serif;
-  font-weight: 400;
-}
-
-::-webkit-scrollbar { width:4px; height:4px; }
-::-webkit-scrollbar-track { background: var(--deep); }
-::-webkit-scrollbar-thumb { background: var(--wave); border-radius:2px; }
+thead tr { background:rgba(14,107,138,0.15); }
+th { padding:0.75rem 1rem; text-align:left; font-size:0.6rem; letter-spacing:2px; text-transform:uppercase; color:var(--mist); font-family:'Cinzel',serif; font-weight:600; border-bottom:1px solid var(--border); }
+td { padding:0.75rem 1rem; border-bottom:1px solid rgba(168,216,234,0.05); font-size:0.875rem; font-weight:500; }
+tr:hover td { background:rgba(14,107,138,0.1); }
+tr:last-child td { border-bottom:none; }
+.td-time{color:var(--mist);font-size:0.7rem;}
+.td-depth{color:var(--seafoam);font-family:'Cinzel',serif;}
+.td-temp{color:var(--coral);font-family:'Cinzel',serif;}
+.td-tds{color:var(--sand);font-family:'Cinzel',serif;}
+.td-gps{color:#b388ff;font-size:0.7rem;}
+.no-data{text-align:center;padding:3rem;color:var(--mist);font-size:0.8rem;letter-spacing:2px;}
+.footer{text-align:center;padding:1.5rem;font-size:0.65rem;color:var(--mist);letter-spacing:2px;border-top:1px solid var(--border);margin-top:1.25rem;font-family:'Cinzel',serif;}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:var(--deep);}
+::-webkit-scrollbar-thumb{background:var(--wave);border-radius:2px;}
 </style>
 </head>
 <body>
-
-<input type="hidden" id="tbHost" value="thingsboard.cloud"/>
-<input type="hidden" id="tbToken" value="u5sb0dpcIKT5L8UijIu8"/>
-
-<!-- Particles -->
 <div class="particles" id="particles"></div>
-
-<!-- HEADER -->
 <div class="header">
   <div class="logo-wrap">
     <div class="logo-icon">⛵</div>
@@ -342,19 +123,13 @@ tr:last-child td { border-bottom: none; }
     </div>
   </div>
   <div class="header-right">
-    <button class="btn-wave btn-demo" onclick="runDemo()">Demo Mode</button>
-    <button class="btn-wave" onclick="startFetching()">Connect Live</button>
     <div class="status-pill offline" id="statusPill">
       <div class="status-dot off" id="statusDot"></div>
-      <span id="statusText">Offline</span>
+      <span id="statusText">Connecting...</span>
     </div>
   </div>
 </div>
-
-<!-- MAIN -->
 <div class="main">
-
-  <!-- SENSOR CARDS -->
   <div class="cards">
     <div class="card c-depth">
       <div class="card-top"><span class="card-label">Water Depth</span><span class="card-icon">🌊</span></div>
@@ -378,8 +153,6 @@ tr:last-child td { border-bottom: none; }
       <div class="card-sub" id="satVal">No satellite fix</div>
     </div>
   </div>
-
-  <!-- MAP + CHART -->
   <div class="grid-main">
     <div class="panel">
       <div class="panel-header">
@@ -392,20 +165,46 @@ tr:last-child td { border-bottom: none; }
         <span id="satelliteInfo">Satellites: —</span>
       </div>
     </div>
-
     <div class="panel">
       <div class="panel-header">
-        <span class="panel-title">Sensor History</span>
-        <span class="panel-badge badge-foam" id="lastUpdateBadge">No data yet</span>
+        <span class="panel-title">All Sensors vs Time</span>
+        <span class="panel-badge badge-foam" id="lastUpdateBadge">No data</span>
       </div>
-      <div class="chart-wrap">
-        <canvas id="sensorChart"></canvas>
+      <div class="graph-wrap" style="height:320px;">
+        <canvas id="combinedChart"></canvas>
       </div>
     </div>
   </div>
-
-  <!-- LIVE DATA LOG -->
-  <div class="panel" style="margin-bottom:1.5rem;">
+  <div class="graphs-grid">
+    <div class="graph-panel">
+      <div class="graph-header">
+        <span class="graph-title depth-title">Depth vs Time</span>
+        <span class="graph-unit unit-depth">cm</span>
+      </div>
+      <div class="graph-wrap">
+        <canvas id="depthChart"></canvas>
+      </div>
+    </div>
+    <div class="graph-panel">
+      <div class="graph-header">
+        <span class="graph-title temp-title">Temperature vs Time</span>
+        <span class="graph-unit unit-temp">°C</span>
+      </div>
+      <div class="graph-wrap">
+        <canvas id="tempChart"></canvas>
+      </div>
+    </div>
+    <div class="graph-panel">
+      <div class="graph-header">
+        <span class="graph-title tds-title">TDS vs Time</span>
+        <span class="graph-unit unit-tds">ppm</span>
+      </div>
+      <div class="graph-wrap">
+        <canvas id="tdsChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="panel" style="margin-bottom:1.25rem;">
     <div class="panel-header">
       <span class="panel-title">Live Data Log</span>
       <span class="panel-badge badge-teal" id="rowCount">0 Readings</span>
@@ -423,284 +222,154 @@ tr:last-child td { border-bottom: none; }
           </tr>
         </thead>
         <tbody id="historyBody">
-          <tr><td colspan="6" class="no-data">No readings yet — press Connect or Demo Mode</td></tr>
+          <tr><td colspan="6" class="no-data">Connecting to Firebase...</td></tr>
         </tbody>
       </table>
     </div>
   </div>
-
 </div>
-
 <div class="footer">Survey Boat Project</div>
-
 <script>
-// ── Particles ──
 (function() {
-  const container = document.getElementById('particles');
-  for (let i = 0; i < 25; i++) {
+  const c = document.getElementById('particles');
+  for (let i = 0; i < 20; i++) {
     const p = document.createElement('div');
     p.className = 'particle';
     p.style.left = Math.random() * 100 + 'vw';
     p.style.animationDuration = (8 + Math.random() * 15) + 's';
     p.style.animationDelay = (Math.random() * 10) + 's';
     p.style.width = p.style.height = (2 + Math.random() * 3) + 'px';
-    p.style.opacity = (0.2 + Math.random() * 0.5).toString();
-    container.appendChild(p);
+    c.appendChild(p);
   }
 })();
-
-// ── State ──
-let map, marker, polyline, chart;
+const firebaseConfig = {
+  apiKey: "AIzaSyAyLHpeLCYe_7r6uJjXyMcYpi1TJImOYeI",
+  authDomain: "surveyboat-17af8.firebaseapp.com",
+  databaseURL: "https://surveyboat-17af8-default-rtdb.firebaseio.com",
+  projectId: "surveyboat-17af8",
+  storageBucket: "surveyboat-17af8.firebasestorage.app",
+  messagingSenderId: "172107211764",
+  appId: "1:172107211764:web:f1eae71d0b111334c9cfa1"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+let map, marker, polyline;
+let combinedChart, depthChart, tempChart, tdsChart;
 let history = [];
-let fetchInterval = null, demoInterval = null;
 let demoLat = 15.4909, demoLng = 73.8278;
-
-// ── Map ──
 function initMap() {
   map = L.map('map').setView([15.4909, 73.8278], 13);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap' }).addTo(map);
   polyline = L.polyline([], { color:'#56c1c1', weight:2, opacity:0.6, dashArray:'5,5' }).addTo(map);
 }
-
-// ── Chart — all 3 datasets on one graph ──
-function initChart() {
-  const ctx = document.getElementById('sensorChart').getContext('2d');
-  chart = new Chart(ctx, {
+function makeChart(id, label, color, unit) {
+  const ctx = document.getElementById(id).getContext('2d');
+  return new Chart(ctx, {
     type: 'line',
-    data: {
-      labels: [],
-      datasets: [
-        {
-          label: 'Depth (cm)',
-          data: [],
-          borderColor: '#56c1c1',
-          backgroundColor: 'rgba(86,193,193,0.08)',
-          borderWidth: 2,
-          tension: 0.4,
-          fill: false,
-          pointRadius: 3,
-          pointBackgroundColor: '#56c1c1',
-          yAxisID: 'y'
-        },
-        {
-          label: 'Temp (°C)',
-          data: [],
-          borderColor: '#e8836a',
-          backgroundColor: 'rgba(232,131,106,0.08)',
-          borderWidth: 2,
-          tension: 0.4,
-          fill: false,
-          pointRadius: 3,
-          pointBackgroundColor: '#e8836a',
-          yAxisID: 'y1'
-        },
-        {
-          label: 'TDS (ppm)',
-          data: [],
-          borderColor: '#f0c987',
-          backgroundColor: 'rgba(240,201,135,0.08)',
-          borderWidth: 2,
-          tension: 0.4,
-          fill: false,
-          pointRadius: 3,
-          pointBackgroundColor: '#f0c987',
-          yAxisID: 'y2'
-        }
-      ]
-    },
+    data: { labels:[], datasets:[{ label:label, data:[], borderColor:color, backgroundColor:color+'15', borderWidth:2, tension:0.4, fill:true, pointRadius:3, pointBackgroundColor:color }] },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode:'index', intersect:false },
-      plugins: {
-        legend: {
-          display: true,
-          position: 'top',
-          labels: {
-            color: '#8ab4c8',
-            font: { size: 11, family: 'Nunito' },
-            padding: 15,
-            usePointStyle: true,
-            pointStyleWidth: 8
-          }
-        },
-        tooltip: {
-          backgroundColor: 'rgba(4,21,40,0.95)',
-          borderColor: 'rgba(168,216,234,0.2)',
-          borderWidth: 1,
-          titleFont: { family: 'Cinzel', size: 11 },
-          bodyFont: { family: 'Nunito', size: 12 },
-          padding: 10
-        }
-      },
+      responsive:true, maintainAspectRatio:false,
+      plugins: { legend:{display:false}, tooltip:{ backgroundColor:'rgba(4,21,40,0.95)', borderColor:'rgba(168,216,234,0.2)', borderWidth:1, titleFont:{family:'Cinzel',size:10}, bodyFont:{family:'Nunito',size:12}, callbacks:{label:ctx=>` ${ctx.parsed.y} ${unit}`} } },
       scales: {
-        x: {
-          ticks: { color:'#8ab4c8', font:{ size:9, family:'Nunito' }, maxTicksLimit:7, maxRotation:0 },
-          grid: { color:'rgba(168,216,234,0.06)' }
-        },
-        y: {
-          type: 'linear', position: 'left',
-          ticks: { color:'#56c1c1', font:{ size:9, family:'Nunito' } },
-          grid: { color:'rgba(168,216,234,0.06)' },
-          title: { display:true, text:'Depth (cm)', color:'#56c1c1', font:{ size:9, family:'Nunito' } }
-        },
-        y1: {
-          type: 'linear', position: 'right',
-          ticks: { color:'#e8836a', font:{ size:9, family:'Nunito' } },
-          grid: { drawOnChartArea:false },
-          title: { display:true, text:'Temp (°C)', color:'#e8836a', font:{ size:9, family:'Nunito' } }
-        },
-        y2: {
-          type: 'linear', position: 'right',
-          ticks: { color:'#f0c987', font:{ size:9, family:'Nunito' } },
-          grid: { drawOnChartArea:false },
-          title: { display:true, text:'TDS (ppm)', color:'#f0c987', font:{ size:9, family:'Nunito' } }
-        }
+        x:{ ticks:{color:'#8ab4c8',font:{size:8,family:'Nunito'},maxTicksLimit:6,maxRotation:0}, grid:{color:'rgba(168,216,234,0.06)'} },
+        y:{ ticks:{color:color,font:{size:9,family:'Nunito'}}, grid:{color:'rgba(168,216,234,0.06)'}, title:{display:true,text:unit,color:color,font:{size:9,family:'Nunito'}} }
       }
     }
   });
 }
-
-function updateChart() {
-  if (!chart || history.length === 0) return;
-  chart.data.labels = history.map(h => h.time);
-  chart.data.datasets[0].data = history.map(h => h.depth);
-  chart.data.datasets[1].data = history.map(h => h.temperature);
-  chart.data.datasets[2].data = history.map(h => h.tds);
-  chart.update('none');
+function initCombinedChart() {
+  const ctx = document.getElementById('combinedChart').getContext('2d');
+  combinedChart = new Chart(ctx, {
+    type:'line',
+    data:{ labels:[], datasets:[
+      {label:'Depth (cm)',data:[],borderColor:'#56c1c1',backgroundColor:'rgba(86,193,193,0.08)',borderWidth:2,tension:0.4,fill:false,pointRadius:3,pointBackgroundColor:'#56c1c1',yAxisID:'y'},
+      {label:'Temp (°C)',data:[],borderColor:'#e8836a',backgroundColor:'rgba(232,131,106,0.08)',borderWidth:2,tension:0.4,fill:false,pointRadius:3,pointBackgroundColor:'#e8836a',yAxisID:'y1'},
+      {label:'TDS (ppm)',data:[],borderColor:'#f0c987',backgroundColor:'rgba(240,201,135,0.08)',borderWidth:2,tension:0.4,fill:false,pointRadius:3,pointBackgroundColor:'#f0c987',yAxisID:'y2'}
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{ legend:{display:true,position:'top',labels:{color:'#8ab4c8',font:{size:10,family:'Nunito'},padding:12,usePointStyle:true}}, tooltip:{backgroundColor:'rgba(4,21,40,0.95)',borderColor:'rgba(168,216,234,0.2)',borderWidth:1,titleFont:{family:'Cinzel',size:10},bodyFont:{family:'Nunito',size:11},padding:10} },
+      scales:{
+        x:{ticks:{color:'#8ab4c8',font:{size:8,family:'Nunito'},maxTicksLimit:7,maxRotation:0},grid:{color:'rgba(168,216,234,0.06)'}},
+        y:{type:'linear',position:'left',ticks:{color:'#56c1c1',font:{size:8,family:'Nunito'}},grid:{color:'rgba(168,216,234,0.06)'},title:{display:true,text:'Depth (cm)',color:'#56c1c1',font:{size:8}}},
+        y1:{type:'linear',position:'right',ticks:{color:'#e8836a',font:{size:8,family:'Nunito'}},grid:{drawOnChartArea:false},title:{display:true,text:'Temp (°C)',color:'#e8836a',font:{size:8}}},
+        y2:{type:'linear',position:'right',ticks:{color:'#f0c987',font:{size:8,family:'Nunito'}},grid:{drawOnChartArea:false},title:{display:true,text:'TDS (ppm)',color:'#f0c987',font:{size:8}}}
+      }
+    }
+  });
 }
-
+function updateCharts() {
+  if (history.length===0) return;
+  const labels=history.map(h=>h.time), depths=history.map(h=>h.depth), temps=history.map(h=>h.temperature), tdss=history.map(h=>h.tds);
+  combinedChart.data.labels=labels; combinedChart.data.datasets[0].data=depths; combinedChart.data.datasets[1].data=temps; combinedChart.data.datasets[2].data=tdss; combinedChart.update('none');
+  depthChart.data.labels=labels; depthChart.data.datasets[0].data=depths; depthChart.update('none');
+  tempChart.data.labels=labels; tempChart.data.datasets[0].data=temps; tempChart.update('none');
+  tdsChart.data.labels=labels; tdsChart.data.datasets[0].data=tdss; tdsChart.update('none');
+}
 function getQuality(tds) {
-  if (tds < 300) return { label:'Good', cls:'q-good' };
-  if (tds < 600) return { label:'Fair', cls:'q-warn' };
-  return { label:'Poor', cls:'q-bad' };
+  if (tds<300) return {label:'Good',cls:'q-good'};
+  if (tds<600) return {label:'Fair',cls:'q-warn'};
+  return {label:'Poor',cls:'q-bad'};
 }
-
 function updateUI(data) {
-  const now   = new Date().toLocaleTimeString();
-  const depth = parseFloat(data.depth || 0);
-  const temp  = parseFloat(data.temperature || 0);
-  const tds   = parseFloat(data.tds || 0);
-  const lat   = parseFloat(data.latitude  || 0);
-  const lng   = parseFloat(data.longitude || 0);
-  const sats  = parseInt(data.satellites  || 0);
-  const fixed = data.gps_fixed || (lat !== 0 && lng !== 0);
-
-  document.getElementById('depthVal').innerHTML = depth.toFixed(1) + '<span class="card-unit">cm</span>';
-  document.getElementById('depthTime').textContent = 'Last updated: ' + now;
-  document.getElementById('tempVal').innerHTML  = temp.toFixed(1)  + '<span class="card-unit">°C</span>';
-  document.getElementById('tempTime').textContent  = 'Last updated: ' + now;
-  document.getElementById('tdsVal').innerHTML   = tds.toFixed(0)   + '<span class="card-unit">ppm</span>';
-  document.getElementById('tdsTime').textContent   = 'Last updated: ' + now;
-
-  const q = getQuality(tds);
-  document.getElementById('qualityBadge').innerHTML = `<span class="quality-badge ${q.cls}">${q.label} Water</span>`;
-
-  if (fixed && lat !== 0) {
-    document.getElementById('gpsVal').textContent = lat.toFixed(4) + ', ' + lng.toFixed(4);
-    document.getElementById('satVal').textContent = sats + ' satellites connected';
-    document.getElementById('gpsBadge').textContent = 'GPS Fixed';
-    document.getElementById('gpsBadge').className = 'panel-badge badge-teal';
-    document.getElementById('coordsInfo').textContent = 'Lat: ' + lat.toFixed(6) + '   Lng: ' + lng.toFixed(6);
-    document.getElementById('satelliteInfo').textContent = sats + ' satellites';
-    updateMap(lat, lng);
+  const now=new Date().toLocaleTimeString();
+  const depth=parseFloat(data.depth||0), temp=parseFloat(data.temperature||0), tds=parseFloat(data.tds||0);
+  const lat=parseFloat(data.latitude||0), lng=parseFloat(data.longitude||0), sats=parseInt(data.satellites||0);
+  const fixed=data.gps_fixed||(lat!==0&&lng!==0);
+  document.getElementById('depthVal').innerHTML=depth.toFixed(1)+'<span class="card-unit"> cm</span>';
+  document.getElementById('depthTime').textContent='Updated: '+now;
+  document.getElementById('tempVal').innerHTML=temp.toFixed(1)+'<span class="card-unit"> °C</span>';
+  document.getElementById('tempTime').textContent='Updated: '+now;
+  document.getElementById('tdsVal').innerHTML=tds.toFixed(0)+'<span class="card-unit"> ppm</span>';
+  document.getElementById('tdsTime').textContent='Updated: '+now;
+  const q=getQuality(tds);
+  document.getElementById('qualityBadge').innerHTML=`<span class="quality-badge ${q.cls}">${q.label} Water</span>`;
+  if (fixed&&lat!==0) {
+    document.getElementById('gpsVal').textContent=lat.toFixed(4)+', '+lng.toFixed(4);
+    document.getElementById('satVal').textContent=sats+' satellites';
+    document.getElementById('gpsBadge').textContent='GPS Fixed';
+    document.getElementById('gpsBadge').className='panel-badge badge-teal';
+    document.getElementById('coordsInfo').textContent='Lat: '+lat.toFixed(6)+'   Lng: '+lng.toFixed(6);
+    document.getElementById('satelliteInfo').textContent=sats+' satellites';
+    updateMap(lat,lng);
   } else {
-    document.getElementById('gpsVal').textContent = 'Searching...';
-    document.getElementById('satVal').textContent = 'No satellite fix';
-    document.getElementById('gpsBadge').textContent = 'No Fix';
-    document.getElementById('gpsBadge').className = 'panel-badge badge-foam';
+    document.getElementById('gpsVal').textContent='Searching...';
+    document.getElementById('satVal').textContent='No satellite fix';
+    document.getElementById('gpsBadge').textContent='No Fix';
+    document.getElementById('gpsBadge').className='panel-badge badge-foam';
   }
-
-  history.push({ time:now, depth, temperature:temp, tds, latitude:lat, longitude:lng });
-  if (history.length > 30) history.shift();
-  updateChart();
-  updateTable();
-  document.getElementById('lastUpdateBadge').textContent = now;
-  document.getElementById('rowCount').textContent = history.length + ' Readings';
+  history.push({time:now,depth,temperature:temp,tds,latitude:lat,longitude:lng});
+  if (history.length>30) history.shift();
+  updateCharts(); updateTable();
+  document.getElementById('lastUpdateBadge').textContent=now;
+  document.getElementById('rowCount').textContent=history.length+' Readings';
   setOnline(true);
 }
-
-function updateMap(lat, lng) {
-  const pos = [lat, lng];
-  if (!marker) {
-    marker = L.circleMarker(pos, { radius:10, fillColor:'#56c1c1', color:'#fff', weight:2, fillOpacity:1 })
-      .addTo(map).bindPopup('<b>Survey Boat</b>');
-  } else { marker.setLatLng(pos); }
-  const lls = polyline.getLatLngs();
-  lls.push(pos);
-  polyline.setLatLngs(lls);
-  map.setView(pos, map.getZoom());
+function updateMap(lat,lng) {
+  const pos=[lat,lng];
+  if (!marker) { marker=L.circleMarker(pos,{radius:10,fillColor:'#56c1c1',color:'#fff',weight:2,fillOpacity:1}).addTo(map).bindPopup('<b>Survey Boat</b>'); }
+  else { marker.setLatLng(pos); }
+  const lls=polyline.getLatLngs(); lls.push(pos); polyline.setLatLngs(lls);
+  map.setView(pos,map.getZoom());
 }
-
 function updateTable() {
-  const tbody = document.getElementById('historyBody');
-  if (history.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="no-data">No readings yet</td></tr>';
-    return;
-  }
-  tbody.innerHTML = history.slice().reverse().slice(0,15).map(h => {
-    const wq = getQuality(h.tds);
-    return `<tr>
-      <td class="td-time">${h.time}</td>
-      <td class="td-depth">${h.depth.toFixed(1)}</td>
-      <td class="td-temp">${h.temperature.toFixed(1)}</td>
-      <td class="td-tds">${h.tds.toFixed(0)}</td>
-      <td><span class="quality-badge ${wq.cls}">${wq.label}</span></td>
-      <td class="td-gps">${h.latitude.toFixed(4)}, ${h.longitude.toFixed(4)}</td>
-    </tr>`;
+  const tbody=document.getElementById('historyBody');
+  if (history.length===0) { tbody.innerHTML='<tr><td colspan="6" class="no-data">No readings yet</td></tr>'; return; }
+  tbody.innerHTML=history.slice().reverse().slice(0,15).map(h=>{
+    const wq=getQuality(h.tds);
+    return `<tr><td class="td-time">${h.time}</td><td class="td-depth">${h.depth.toFixed(1)} cm</td><td class="td-temp">${h.temperature.toFixed(1)} °C</td><td class="td-tds">${h.tds.toFixed(0)} ppm</td><td><span class="quality-badge ${wq.cls}">${wq.label}</span></td><td class="td-gps">${h.latitude.toFixed(4)}°N, ${h.longitude.toFixed(4)}°E</td></tr>`;
   }).join('');
 }
-
 function setOnline(on) {
-  const pill = document.getElementById('statusPill');
-  const dot  = document.getElementById('statusDot');
-  const txt  = document.getElementById('statusText');
+  const pill=document.getElementById('statusPill'), dot=document.getElementById('statusDot'), txt=document.getElementById('statusText');
   if (on) { pill.className='status-pill'; dot.className='status-dot'; txt.textContent='Live'; }
   else    { pill.className='status-pill offline'; dot.className='status-dot off'; txt.textContent='Offline'; }
 }
-
-function startFetching() {
-  if (demoInterval) { clearInterval(demoInterval); demoInterval = null; }
-  if (fetchInterval) clearInterval(fetchInterval);
-  const host  = document.getElementById('tbHost').value;
-  const token = document.getElementById('tbToken').value;
-  document.getElementById('statusText').textContent = 'Connecting...';
-  async function fetchData() {
-    try {
-      const res = await fetch(`https://${host}/api/v1/${token}/telemetry`);
-      if (!res.ok) throw new Error(res.status);
-      const raw = await res.json();
-      const parsed = {};
-      for (const k in raw) { if (raw[k] && raw[k].length > 0) parsed[k] = raw[k][0].value; }
-      if (Object.keys(parsed).length > 0) updateUI(parsed);
-    } catch(e) { setOnline(false); }
-  }
-  fetchData();
-  fetchInterval = setInterval(fetchData, 3000);
+function startFirebase() {
+  db.ref('/sensorData').on('value', snapshot=>{ const data=snapshot.val(); if (data) updateUI(data); }, ()=>setOnline(false));
 }
-
-function runDemo() {
-  if (fetchInterval) { clearInterval(fetchInterval); fetchInterval = null; }
-  if (demoInterval)  { clearInterval(demoInterval);  demoInterval  = null; }
-  document.getElementById('statusText').textContent = 'Demo';
-  function gen() {
-    demoLat += (Math.random()-0.5)*0.001;
-    demoLng += (Math.random()-0.5)*0.001;
-    updateUI({
-      depth:       (60+Math.random()*120).toFixed(1),
-      temperature: (24+Math.random()*8).toFixed(1),
-      tds:         (100+Math.random()*400).toFixed(0),
-      latitude:    demoLat,
-      longitude:   demoLng,
-      satellites:  Math.floor(4+Math.random()*5),
-      gps_fixed:   true
-    });
-  }
-  gen();
-  demoInterval = setInterval(gen, 2000);
-}
-
-window.addEventListener('load', () => { initMap(); initChart(); setOnline(false); });
+window.addEventListener('load',()=>{ initMap(); initCombinedChart(); depthChart=makeChart('depthChart','Depth','#56c1c1','cm'); tempChart=makeChart('tempChart','Temperature','#e8836a','°C'); tdsChart=makeChart('tdsChart','TDS','#f0c987','ppm'); startFirebase(); });
 </script>
 </body>
 </html>
